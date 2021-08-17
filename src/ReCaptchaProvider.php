@@ -30,10 +30,14 @@ class ReCaptchaProvider
 	/** @var string */
 	private $secretKey;
 
-	public function __construct(string $siteKey, string $secretKey)
+	/** @var int */
+	private $minScorePercentage;
+
+	public function __construct(string $siteKey, string $secretKey, int $minScorePercentage)
 	{
 		$this->siteKey = $siteKey;
 		$this->secretKey = $secretKey;
+		$this->minScorePercentage = $minScorePercentage;
 	}
 
 	public function getSiteKey(): string
@@ -60,8 +64,18 @@ class ReCaptchaProvider
 		// Decode server answer (with key assoc reserved)
 		$answer = json_decode($response, true);
 
-		// Return response
-		return $answer['success'] === true ? new ReCaptchaResponse(true) : new ReCaptchaResponse(false, $answer['error-codes'] ?? null);
+		// invisible reCaptcha v3
+		if (array_key_exists('score', $answer)) {
+			if ($answer['success'] !== true || ($answer['score']*100) < $this->minScorePercentage) {
+				return new ReCaptchaResponse(false, $answer['error-codes'] ?? null);
+			} else {
+				return new ReCaptchaResponse(true);
+			}
+
+			// invisible reCaptcha v2
+		} else {
+			return $answer['success'] === true ? new ReCaptchaResponse(true) : new ReCaptchaResponse(false, $answer['error-codes'] ?? null);
+		}
 	}
 
 	public function validateControl(BaseControl $control): bool
