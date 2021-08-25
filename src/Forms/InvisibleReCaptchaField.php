@@ -3,6 +3,7 @@
 namespace Contributte\ReCaptcha\Forms;
 
 use Contributte\ReCaptcha\ReCaptchaProvider;
+use Contributte\ReCaptcha\ReCaptchaResponse;
 use Nette\Forms\Controls\HiddenField;
 use Nette\Forms\Form;
 use Nette\Forms\Rules;
@@ -19,6 +20,9 @@ class InvisibleReCaptchaField extends HiddenField
 
 	/** @var string|null */
 	private $message;
+
+	/** @var ReCaptchaResponse|null */
+	private $reCaptchaResponse = null;
 
 	public function __construct(ReCaptchaProvider $provider, ?string $message = null)
 	{
@@ -65,7 +69,7 @@ class InvisibleReCaptchaField extends HiddenField
 		}
 
 		$message = $this->message ?? 'Are you a bot?';
-		$this->addRule(function ($code): bool {
+		$this->addRule(function (): bool {
 			return $this->verify() === true;
 		}, $message);
 		$this->configured = true;
@@ -73,7 +77,15 @@ class InvisibleReCaptchaField extends HiddenField
 
 	public function verify(): bool
 	{
-		return $this->provider->validateControl($this) === true;
+		return $this->getReCaptchaResponse()->isSuccess();
+	}
+
+	public function getReCaptchaResponse(): ReCaptchaResponse
+	{
+		if ($this->reCaptchaResponse === null) {
+			$this->reCaptchaResponse = $this->provider->validateControl($this);
+		}
+		return $this->reCaptchaResponse;
 	}
 
 	public function getControl(?string $caption = null): Html

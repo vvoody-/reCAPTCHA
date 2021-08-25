@@ -3,6 +3,7 @@
 namespace Contributte\ReCaptcha\Forms;
 
 use Contributte\ReCaptcha\ReCaptchaProvider;
+use Contributte\ReCaptcha\ReCaptchaResponse;
 use Nette\Forms\Controls\TextInput;
 use Nette\Forms\Form;
 use Nette\Forms\Rules;
@@ -19,6 +20,9 @@ class ReCaptchaField extends TextInput
 
 	/** @var string|null */
 	private $message;
+
+	/** @var ReCaptchaResponse|null */
+	private $reCaptchaResponse = null;
 
 	public function __construct(ReCaptchaProvider $provider, ?string $label = null, ?string $message = null)
 	{
@@ -72,8 +76,17 @@ class ReCaptchaField extends TextInput
 
 	public function verify(): bool
 	{
-		return $this->provider->validateControl($this) === true;
+		return $this->getReCaptchaResponse()->isSuccess();
 	}
+
+	public function getReCaptchaResponse(): ReCaptchaResponse
+	{
+		if ($this->reCaptchaResponse === null) {
+			$this->reCaptchaResponse = $this->provider->validateControl($this);
+		}
+		return $this->reCaptchaResponse;
+	}
+
 
 	public function getControl(): Html
 	{

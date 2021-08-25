@@ -18,18 +18,27 @@ final class ReCaptchaResponse
 	/** @var string[]|string|null */
 	private $error;
 
+	/** @var int|null */
+	private $score;
+
 	/**
 	 * @param string[]|string|null $error
 	 */
-	public function __construct(bool $success, $error = null)
+	public function __construct(bool $success, ?int $score = null, $error = null)
 	{
 		$this->success = $success;
+		$this->score = $score;
 		$this->error = $error;
 	}
 
 	public function isSuccess(): bool
 	{
 		return $this->success;
+	}
+
+	public function getScore(): ?int
+	{
+		return $this->score;
 	}
 
 	/**

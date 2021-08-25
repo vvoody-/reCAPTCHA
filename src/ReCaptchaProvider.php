@@ -4,6 +4,7 @@ namespace Contributte\ReCaptcha;
 
 use Nette\Forms\Controls\BaseControl;
 use Nette\SmartObject;
+use Tracy\Debugger;
 
 /**
  * @method onValidateControl(ReCaptchaProvider $provider, BaseControl $control)
@@ -48,17 +49,22 @@ class ReCaptchaProvider
 	/**
 	 * @param mixed $response
 	 */
-	public function validate($response): ?ReCaptchaResponse
+	public function validate($response): ReCaptchaResponse
 	{
 		// Fire events!
 		$this->onValidate($this, $response);
 
+		// Response is empty
+		if (empty($response)) {
+			return new ReCaptchaResponse(false, null, 'Your ReCaptcha hidden input is empty. Did you linked javascript files \'invisibleRecaptcha.js\' to website?');
+		}
+
 		// Load response
 		$response = $this->makeRequest($response);
 
-		// Response is empty or failed..
+		// Response failed..
 		if (empty($response)) {
-			return null;
+			return new ReCaptchaResponse(false, null, 'ReCaptcha request failed');
 		}
 
 		// Decode server answer (with key assoc reserved)
@@ -66,31 +72,27 @@ class ReCaptchaProvider
 
 		// invisible reCaptcha v3
 		if (array_key_exists('score', $answer)) {
-			if ($answer['success'] !== true || ($answer['score']*100) < $this->minScorePercentage) {
-				return new ReCaptchaResponse(false, $answer['error-codes'] ?? null);
+			$score = (int) round($answer['score']*100);
+
+			if ($answer['success'] !== true || $score < $this->minScorePercentage) {
+				return new ReCaptchaResponse(false, $score, $answer['error-codes'] ?? null);
 			} else {
-				return new ReCaptchaResponse(true);
+				return new ReCaptchaResponse(true, $score);
 			}
 
 			// invisible reCaptcha v2
 		} else {
-			return $answer['success'] === true ? new ReCaptchaResponse(true) : new ReCaptchaResponse(false, $answer['error-codes'] ?? null);
+			return $answer['success'] === true ? new ReCaptchaResponse(true) : new ReCaptchaResponse(false, null, $answer['error-codes'] ?? null);
 		}
 	}
 
-	public function validateControl(BaseControl $control): bool
+	public function validateControl(BaseControl $control): ReCaptchaResponse
 	{
 		// Fire events!
 		$this->onValidateControl($this, $control);
 
 		// Get response
-		$response = $this->validate($control->getValue());
-
-		if ($response !== null) {
-			return $response->isSuccess();
-		}
-
-		return false;
+		return $this->validate($control->getValue());
 	}
 
 
@@ -100,10 +102,6 @@ class ReCaptchaProvider
 	 */
 	protected function makeRequest($response, ?string $remoteIp = null)
 	{
-		if (empty($response)) {
-			return null;
-		}
-
 		$params = [
 			'secret' => $this->secretKey,
 			'response' => $response,
